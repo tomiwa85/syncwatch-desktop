@@ -1,0 +1,73 @@
+name: Build Windows (Flutter)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      # The repo only holds lib/ + pubspec.yaml. `flutter create` regenerates the
+      # Windows platform scaffolding (windows/ runner, CMake, plugin registrant) on
+      # the runner — but it also overwrites lib/main.dart and pubspec.yaml, so we
+      # stash ours first and put them back afterwards.
+      - name: Preserve app sources
+        shell: bash
+        run: |
+          mkdir -p _keep
+          cp pubspec.yaml _keep/pubspec.yaml
+          cp -r lib _keep/lib
+
+      - name: Generate Windows scaffolding
+        shell: bash
+        run: |
+          flutter config --enable-windows-desktop
+          flutter create --platforms=windows --project-name syncwatch_desktop --org com.syncwatch .
+
+      - name: Restore app sources
+        shell: bash
+        run: |
+          cp _keep/pubspec.yaml pubspec.yaml
+          rm -rf lib
+          cp -r _keep/lib lib
+          rm -rf _keep
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows (release)
+        run: flutter build windows --release
+
+      # Flutter's output path has moved between versions (…/runner/Release vs
+      # …/x64/runner/Release), so locate the folder that actually contains our exe.
+      - name: Package build
+        shell: pwsh
+        run: |
+          $dir = Get-ChildItem -Path build\windows -Recurse -Directory -Filter Release |
+            Where-Object { Test-Path (Join-Path $_.FullName 'syncwatch_desktop.exe') } |
+            Select-Object -First 1
+          if (-not $dir) { throw 'Release build folder (with syncwatch_desktop.exe) not found.' }
+          Write-Host "Packaging: $($dir.FullName)"
+          Compress-Archive -Path (Join-Path $dir.FullName '*') -DestinationPath SyncWatch-Desktop-Windows.zip -Force
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SyncWatch-Desktop-Windows
+          path: SyncWatch-Desktop-Windows.zip
+          if-no-files-found: error
