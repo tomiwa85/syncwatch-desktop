@@ -1,0 +1,6 @@
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    # Lints never fail `flutter build`, but keep the noise down.
+    prefer_const_constructors: false

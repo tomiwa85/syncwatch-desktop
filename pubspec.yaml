@@ -1,5 +1,5 @@
 name: syncwatch_desktop
-description: SyncWatch desktop (Flutter) — playback prototype.
+description: SyncWatch desktop (Flutter) — sync prototype.
 publish_to: "none"
 version: 0.0.1
 
@@ -10,17 +10,19 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # The reason we're switching: libmpv-backed playback that handles MKV/HEVC/
-  # AC3/DTS/10-bit natively, and renders into a Flutter texture so we can overlay
-  # our own UI (controls, chat, subtitles) on top — the thing Electron couldn't do.
+  # libmpv-backed playback: MKV/HEVC/AC3/DTS natively, rendered into a Flutter
+  # texture so our own overlay UI works on top.
   media_kit: ^1.1.11
   media_kit_video: ^1.2.5
-  # Bundles the libmpv DLLs into the Windows build automatically.
   media_kit_libs_windows_video: ^1.0.10
 
-  # Native file picker (returns a real filesystem path — no in-memory copy, so
-  # multi-GB files are fine).
+  # Native file picker (returns a real path + size — no in-memory copy).
   file_picker: ^8.1.2
+
+  # Backend comms — must speak the SAME protocol as the mobile app, so a phone
+  # user and a desktop user can share a room.
+  http: ^1.2.2
+  socket_io_client: ^2.0.3+1
 
 dev_dependencies:
   flutter_lints: ^4.0.0
