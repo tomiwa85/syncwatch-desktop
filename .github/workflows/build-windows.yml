@@ -50,8 +50,23 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build Windows (release)
-        run: flutter build windows --release
+      # media_kit_libs_windows_video downloads a prebuilt libmpv archive during
+      # the native build, and that download intermittently arrives corrupted →
+      # "Integrity check failed, please try to re-build project again." Retry with
+      # a clean (which forces a fresh download) up to 4 times.
+      - name: Build Windows (release, retry flaky libmpv download)
+        shell: pwsh
+        run: |
+          $ok = $false
+          for ($i = 1; $i -le 4; $i++) {
+            Write-Host "===== Build attempt $i / 4 ====="
+            flutter build windows --release
+            if ($LASTEXITCODE -eq 0) { $ok = $true; break }
+            Write-Host "Build failed (likely the flaky libmpv download). Cleaning for a fresh retry..."
+            flutter clean
+            flutter pub get
+          }
+          if (-not $ok) { throw "flutter build windows failed after 4 attempts." }
 
       # Flutter's output path has moved between versions (…/runner/Release vs
       # …/x64/runner/Release), so locate the folder that actually contains our exe.
